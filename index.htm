@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1" />
+    <title>Dashcam Videos</title>
+    <style>
+      :root {
+        --bg: #0f1724;
+        --card: #0b1220;
+        --muted: #94a3b8;
+        --accent: #7c3aed;
+        --glass: rgba(255, 255, 255, 0.04);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+        margin: 0;
+        background: linear-gradient(180deg, #071023 0%, #071726 100%);
+        color: #e6eef8;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .app {
+        width: 100%;
+        max-width: 980px;
+      }
+      header {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      button {
+        background: var(--accent);
+        border: none;
+        padding: 8px 12px;
+        border-radius: 10px;
+        color: white;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      button.ghost {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+        padding: 16px;
+        border-radius: 14px;
+        box-shadow: 0 6px 18px rgba(2, 6, 23, 0.6);
+      }
+      form {
+        display: grid;
+        grid-template-columns: 1fr 140px;
+        gap: 10px;
+        align-items: center;
+      }
+      input[type='text'],
+      textarea {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.04);
+        background: transparent;
+        color: inherit;
+      }
+      textarea {
+        resize: vertical;
+        min-height: 56px;
+      }
+      .list {
+        margin-top: 14px;
+        display: grid;
+        gap: 10px;
+      }
+      .item {
+        padding: 12px;
+        border-radius: 10px;
+        background: var(--glass);
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+      }
+      .item img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        flex-shrink: 0;
+      }
+      .item .meta {
+        flex: 1;
+      }
+      .title {
+        font-weight: 700;
+      }
+      .desc {
+        color: var(--muted);
+        font-size: 14px;
+        margin-top: 6px;
+      }
+      .link a {
+        color: var(--accent);
+        font-size: 14px;
+        text-decoration: none;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+      .small {
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+      .drag-handle {
+        cursor: grab;
+        user-select: none;
+        padding: 6px;
+        border-radius: 8px;
+        border: 1px dashed rgba(255, 255, 255, 0.03);
+        align-self: center;
+      }
+      .importfile {
+        display: none;
+      }
+      footer {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      @media (max-width: 600px) {
+        form {
+          grid-template-columns: 1fr;
+        }
+        .controls {
+          flex-direction: column;
+          align-items: flex-end;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Dashcam Videos</h1>
+        <div class="controls">
+          <button id="export">Export (JSON)</button>
+          <label
+            class="ghost small"
+            style="display: inline-block; cursor: pointer; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.06)"
+            >Import
+            <input
+              id="importFile"
+              class="importfile"
+              type="file"
+              accept="application/json" />
+          </label>
+          <button
+            id="clear"
+            class="ghost">
+            Alle löschen
+          </button>
+        </div>
+      </header>
+
+      <section class="card">
+        <form id="addForm">
+          <div>
+            <input
+              type="text"
+              id="title"
+              placeholder="Titel (kurz)"
+              required
+              maxlength="80" />
+            <textarea
+              id="description"
+              placeholder="Beschreibung (längerer Text)"
+              required
+              maxlength="1000"></textarea>
+            <input
+              type="text"
+              id="imageUrl"
+              placeholder="Bild-URL"
+              required />
+            <input
+              type="text"
+              id="linkUrl"
+              placeholder="Link-URL"
+              required />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <button id="addBtn">Hinzufügen</button>
+            <button
+              type="button"
+              id="clearInputs"
+              class="ghost">
+              Eingaben leeren
+            </button>
+          </div>
+        </form>
+
+        <div
+          class="list"
+          id="list"
+          aria-live="polite"></div>
+
+        <footer>
+          <div id="status">Gespeichert in <strong>localStorage</strong>. Änderungen werden automatisch lokal gespeichert.</div>
+        </footer>
+      </section>
+    </main>
+
+    <template id="itemTmpl">
+      <div
+        class="item"
+        draggable="true">
+        <div class="drag-handle">☰</div>
+        <img
+          class="preview"
+          alt="Bild" />
+        <div class="meta">
+          <div class="title"></div>
+          <div class="desc"></div>
+          <div class="link"></div>
+        </div>
+        <div class="actions">
+          <button class="small edit">Bearbeiten</button>
+          <button class="small delete">Löschen</button>
+        </div>
+      </div>
+    </template>
+
+    <script>
+      const STORAGE_KEY = 'beschreibungen_v3';
+      const form = document.getElementById('addForm');
+      const titleInput = document.getElementById('title');
+      const descInput = document.getElementById('description');
+      const imgInput = document.getElementById('imageUrl');
+      const linkInput = document.getElementById('linkUrl');
+      const listEl = document.getElementById('list');
+      const exportBtn = document.getElementById('export');
+      const importFile = document.getElementById('importFile');
+      const clearBtn = document.getElementById('clear');
+      const clearInputsBtn = document.getElementById('clearInputs');
+      const tmpl = document.getElementById('itemTmpl');
+
+      let items = load();
+      let dragSrcIndex = null;
+
+      function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        document.getElementById('status').textContent = 'Gespeichert in localStorage. ' + new Date().toLocaleString();
+      }
+
+      function load() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          console.error('Ladefehler', e);
+          return [];
+        }
+      }
+
+      function render() {
+        listEl.innerHTML = '';
+        if (items.length === 0) {
+          listEl.innerHTML =
+            '<div style="color:var(--muted);padding:10px;border-radius:8px">Keine Einträge. Nutze das Formular oben, um Beschreibungen hinzuzufügen.</div>';
+          return;
+        }
+        items.forEach((it, idx) => {
+          const node = tmpl.content.cloneNode(true);
+          const item = node.querySelector('.item');
+          item.dataset.index = idx;
+          node.querySelector('.title').textContent = it.title;
+          node.querySelector('.desc').textContent = it.description;
+          node.querySelector('.preview').src = it.imageUrl || '';
+          if (it.linkUrl) {
+            node.querySelector('.link').innerHTML = `<a href="${it.linkUrl}" target="_blank">Link öffnen</a>`;
+          }
+
+          node.querySelector('.delete').addEventListener('click', () => {
+            if (confirm('Eintrag löschen?')) {
+              items.splice(idx, 1);
+              save();
+              render();
+            }
+          });
+          node.querySelector('.edit').addEventListener('click', () => {
+            const newTitle = prompt('Titel bearbeiten:', it.title);
+            if (newTitle === null) return;
+            const newDesc = prompt('Beschreibung bearbeiten:', it.description);
+            if (newDesc === null) return;
+            const newImg = prompt('Bild-URL bearbeiten:', it.imageUrl);
+            if (newImg === null) return;
+            const newLink = prompt('Link-URL bearbeiten:', it.linkUrl);
+            if (newLink === null) return;
+            items[idx] = { title: newTitle.trim(), description: newDesc.trim(), imageUrl: newImg.trim(), linkUrl: newLink.trim() };
+            save();
+            render();
+          });
+
+          item.addEventListener('dragstart', () => {
+            dragSrcIndex = idx;
+            item.style.opacity = '0.5';
+          });
+          item.addEventListener('dragend', () => {
+            item.style.opacity = '';
+            dragSrcIndex = null;
+          });
+          item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+          });
+          item.addEventListener('drop', () => {
+            if (dragSrcIndex === null || dragSrcIndex === idx) return;
+            const moved = items.splice(dragSrcIndex, 1)[0];
+            items.splice(idx, 0, moved);
+            save();
+            render();
+          });
+
+          listEl.appendChild(node);
+        });
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const title = titleInput.value.trim();
+        const description = descInput.value.trim();
+        const imageUrl = imgInput.value.trim();
+        const linkUrl = linkInput.value.trim();
+        if (!title || !description || !imageUrl || !linkUrl) return alert('Bitte alle Felder ausfüllen.');
+        items.unshift({ title, description, imageUrl, linkUrl, created: Date.now() });
+        save();
+        render();
+        form.reset();
+        titleInput.focus();
+      });
+
+      clearInputsBtn.addEventListener('click', () => {
+        form.reset();
+        titleInput.focus();
+      });
+
+      exportBtn.addEventListener('click', () => {
+        const dataStr = JSON.stringify(items, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'beschreibungen.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      importFile.addEventListener('change', (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const parsed = JSON.parse(reader.result);
+            if (!Array.isArray(parsed)) throw new Error('Ungültiges Format: Array erwartet');
+            const cleaned = parsed.map((p) => ({
+              title: String(p.title || '').slice(0, 200),
+              description: String(p.description || '').slice(0, 2000),
+              imageUrl: String(p.imageUrl || ''),
+              linkUrl: String(p.linkUrl || ''),
+            }));
+            if (!confirm('Importieren und vorhandene Einträge ersetzen?')) return;
+            items = cleaned;
+            save();
+            render();
+          } catch (err) {
+            alert('Import-Fehler: ' + err.message);
+          }
+        };
+        reader.readAsText(f);
+        importFile.value = '';
+      });
+
+      clearBtn.addEventListener('click', () => {
+        if (confirm('Alle Einträge endgültig löschen?')) {
+          items = [];
+          save();
+          render();
+        }
+      });
+
+      render();
+    </script>
+  </body>
+</html>
