@@ -12,6 +12,7 @@
         --card: #0b1220;
         --muted: #94a3b8;
         --accent: #7c3aed;
+        --hashtags: #f1e53c;
         --glass: rgba(255, 255, 255, 0.04);
       }
       * {
@@ -117,6 +118,11 @@
         color: var(--muted);
         font-size: 14px;
         margin-top: 6px;
+      }
+      .hashtags {
+        margin-top: 6px;
+        font-size: 14px;
+        color: var(--hashtag);
       }
       .link a {
         color: var(--accent);
@@ -241,7 +247,7 @@
           <div class="desc"></div>
           <div
             class="hashtags"
-            style="color: var(--accent); font-size: 13px; margin-top: 4px"></div>
+            style="color: var(--hashtags); font-size: 13px; margin-top: 4px"></div>
           <div class="link"></div>
           <div
             class="claims"
@@ -274,7 +280,7 @@
     </template>
 
     <script>
-      const STORAGE_KEY = 'beschreibungen_v3';
+      const STORAGE_KEY = 'beschreibungen';
       const form = document.getElementById('addForm');
       const titleInput = document.getElementById('title');
       const descInput = document.getElementById('description');
@@ -292,7 +298,7 @@
 
       function save() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-        document.getElementById('status').textContent = 'Gespeichert in localStorage. ' + new Date().toLocaleString();
+        //document.getElementById('status').textContent = 'Gespeichert in localStorage. ' + new Date().toLocaleString();
       }
 
       function load() {
@@ -311,6 +317,11 @@
 
       function sendClaim(id, ddg, rlp, letsdc) {
         const xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            console.log(xhr.responseText);
+          }
+        };
         xhr.open('POST', 'claim.php', true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         xhr.send(`id=${encodeURIComponent(id)}&ddg=${ddg ? 1 : 0}&rlp=${rlp ? 1 : 0}&letsdc=${letsdc ? 1 : 0}`);
@@ -398,12 +409,13 @@
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
+        const id = generateId();
         const title = titleInput.value.trim();
         const description = descInput.value.trim();
         const linkUrl = linkInput.value.trim();
         const hashtags = hashtagsInput.value.trim();
         if (!title || !description || !linkUrl) return alert('Bitte alle Felder ausfüllen.');
-        items.unshift({ title, description, linkUrl, created: Date.now() });
+        items.unshift({ id, title, description, linkUrl, hashtags });
         save();
         render();
         form.reset();
