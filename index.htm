@@ -199,14 +199,14 @@
               maxlength="1000"></textarea>
             <input
               type="text"
-              id="imageUrl"
-              placeholder="Bild-URL"
-              required />
-            <input
-              type="text"
               id="linkUrl"
               placeholder="Link-URL"
               required />
+            <input
+              type="text"
+              id="hashtags"
+              placeholder="Hashtags (z.B. #unfall #regen)"
+              maxlength="200" />
           </div>
           <div style="display: flex; flex-direction: column; gap: 8px">
             <button id="addBtn">Hinzufügen</button>
@@ -225,7 +225,8 @@
           aria-live="polite"></div>
 
         <footer>
-          <div id="status">Gespeichert in <strong>localStorage</strong>. Änderungen werden automatisch lokal gespeichert.</div>
+          <!-- div id="status">Gespeichert in <strong>localStorage</strong>. Änderungen werden automatisch lokal gespeichert.</div -->
+          <div id="status">Made with &hearts;Love&hearts;, VSC &amp; Copilot</div>
         </footer>
       </section>
     </main>
@@ -235,13 +236,35 @@
         class="item"
         draggable="true">
         <div class="drag-handle">☰</div>
-        <img
-          class="preview"
-          alt="Bild" />
         <div class="meta">
           <div class="title"></div>
           <div class="desc"></div>
+          <div
+            class="hashtags"
+            style="color: var(--accent); font-size: 13px; margin-top: 4px"></div>
           <div class="link"></div>
+          <div
+            class="claims"
+            style="margin-top: 8px">
+            <label
+              ><input
+                type="checkbox"
+                class="claim-ddg" />
+              DDG</label
+            >
+            <label
+              ><input
+                type="checkbox"
+                class="claim-rlp" />
+              RLP</label
+            >
+            <label
+              ><input
+                type="checkbox"
+                class="claim-letsdc" />
+              Lets DC</label
+            >
+          </div>
         </div>
         <div class="actions">
           <button class="small edit">Bearbeiten</button>
@@ -255,8 +278,8 @@
       const form = document.getElementById('addForm');
       const titleInput = document.getElementById('title');
       const descInput = document.getElementById('description');
-      const imgInput = document.getElementById('imageUrl');
       const linkInput = document.getElementById('linkUrl');
+      const hashtagsInput = document.getElementById('hashtags');
       const listEl = document.getElementById('list');
       const exportBtn = document.getElementById('export');
       const importFile = document.getElementById('importFile');
@@ -282,23 +305,52 @@
         }
       }
 
+      function generateId() {
+        return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+      }
+
+      function sendClaim(id, ddg, rlp, letsdc) {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', 'claim.php', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.send(`id=${encodeURIComponent(id)}&ddg=${ddg ? 1 : 0}&rlp=${rlp ? 1 : 0}&letsdc=${letsdc ? 1 : 0}`);
+      }
+
       function render() {
         listEl.innerHTML = '';
-        if (items.length === 0) {
-          listEl.innerHTML =
-            '<div style="color:var(--muted);padding:10px;border-radius:8px">Keine Einträge. Nutze das Formular oben, um Beschreibungen hinzuzufügen.</div>';
-          return;
-        }
+        listEl.innerHTML = '<div style="color:var(--muted);padding:10px;border-radius:8px">' + items.length + ' Einträge.</div>';
+
         items.forEach((it, idx) => {
           const node = tmpl.content.cloneNode(true);
           const item = node.querySelector('.item');
           item.dataset.index = idx;
           node.querySelector('.title').textContent = it.title;
           node.querySelector('.desc').textContent = it.description;
-          node.querySelector('.preview').src = it.imageUrl || '';
+          node.querySelector('.hashtags').textContent = it.hashtags || '';
+
           if (it.linkUrl) {
-            node.querySelector('.link').innerHTML = `<a href="${it.linkUrl}" target="_blank">Link öffnen</a>`;
+            node.querySelector('.link').innerHTML = `<a href="${it.linkUrl}" target="_blank">Download</a>`;
           }
+
+          // Checkboxen initialisieren
+          const ddgBox = node.querySelector('.claim-ddg');
+          const rlpBox = node.querySelector('.claim-rlp');
+          const letsdcBox = node.querySelector('.claim-letsdc');
+          ddgBox.checked = !!it.claim_ddg;
+          rlpBox.checked = !!it.claim_rlp;
+          letsdcBox.checked = !!it.claim_letsdc;
+
+          // Checkbox-Events
+          [ddgBox, rlpBox, letsdcBox].forEach((box, i) => {
+            box.addEventListener('change', () => {
+              // Werte aktualisieren
+              it.claim_ddg = ddgBox.checked;
+              it.claim_rlp = rlpBox.checked;
+              it.claim_letsdc = letsdcBox.checked;
+              save();
+              sendClaim(it.id, it.claim_ddg, it.claim_rlp, it.claim_letsdc);
+            });
+          });
 
           node.querySelector('.delete').addEventListener('click', () => {
             if (confirm('Eintrag löschen?')) {
@@ -312,11 +364,11 @@
             if (newTitle === null) return;
             const newDesc = prompt('Beschreibung bearbeiten:', it.description);
             if (newDesc === null) return;
-            const newImg = prompt('Bild-URL bearbeiten:', it.imageUrl);
-            if (newImg === null) return;
             const newLink = prompt('Link-URL bearbeiten:', it.linkUrl);
             if (newLink === null) return;
-            items[idx] = { title: newTitle.trim(), description: newDesc.trim(), imageUrl: newImg.trim(), linkUrl: newLink.trim() };
+            const newHashtags = prompt('Hashtags bearbeiten:', it.hashtags || '');
+            if (newHashtags === null) return;
+            items[idx] = { title: newTitle.trim(), description: newDesc.trim(), linkUrl: newLink.trim(), hashtags: newHashtags.trim() };
             save();
             render();
           });
@@ -348,10 +400,10 @@
         e.preventDefault();
         const title = titleInput.value.trim();
         const description = descInput.value.trim();
-        const imageUrl = imgInput.value.trim();
         const linkUrl = linkInput.value.trim();
-        if (!title || !description || !imageUrl || !linkUrl) return alert('Bitte alle Felder ausfüllen.');
-        items.unshift({ title, description, imageUrl, linkUrl, created: Date.now() });
+        const hashtags = hashtagsInput.value.trim();
+        if (!title || !description || !linkUrl) return alert('Bitte alle Felder ausfüllen.');
+        items.unshift({ title, description, linkUrl, created: Date.now() });
         save();
         render();
         form.reset();
